@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"github.com/ant0ine/go-json-rest/rest"
@@ -12,49 +13,70 @@ import (
 	"time"
 )
 
-var (
-	port     int
-	filename string
-	f        *os.File
-)
+// output file to save logs to
+var f *os.File
 
-type LogMsg struct {
-	Message string
-}
-
+// response type for logs successfully saved
 type OkResp struct {
 	Ok        bool      `json:"ok"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+// response type for logs that errored
+type ErrResp struct {
+	Ok        bool      `json:"ok"`
+	ErroredAt time.Time `json:"erroredAt"`
+	Error     string    `json:"error"`
+}
+
+// handler for POST requests to write logs
 func PostLogHandler(res rest.ResponseWriter, req *rest.Request) {
 
 	content, err := ioutil.ReadAll(req.Body)
 	req.Body.Close()
 	if err != nil {
-		rest.Error(res, "Error reading request body: "+err.Error(), http.StatusInternalServerError)
+		e := "Error reading request body: " + err.Error()
+		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteJson(ErrResp{Ok: false, ErroredAt: time.Now(), Error: e})
 		return
 	}
 
-	err = ioutil.WriteFile(filename, content, 0644)
+	_, err = f.Write(content)
 	if err != nil {
-		rest.Error(res, "Error writing log message to file: "+err.Error(), http.StatusInternalServerError)
+		e := "Error writing log message to file: " + err.Error()
+		res.WriteHeader(http.StatusInternalServerError)
+		res.WriteJson(ErrResp{Ok: false, ErroredAt: time.Now(), Error: e})
 		return
 	}
-	//ioutil.WriteFile(filename, "\n", 0644)
 
 	res.WriteHeader(http.StatusOK)
 	res.WriteJson(OkResp{Ok: true, CreatedAt: time.Now()})
 }
 
+// handler for POST requests to write logs
+func GetLogsHandler(res rest.ResponseWriter, req *rest.Request) {
+	res.WriteHeader(http.StatusOK)
+	r := bufio.NewReader(f)
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		res.WriteJson(scanner.Text())
+		res.(http.ResponseWriter).Write([]byte("\n"))
+	}
+	res.(http.Flusher).Flush()
+}
+
 func main() {
+	var port int
+	var filepath, logpath string
+
 	// configure command line flags
 	flag.IntVar(&port, "port", 8080, "HTTP Server Port")
-	flag.StringVar(&filename, "filename", "output", "Output file path")
+	flag.StringVar(&filepath, "filepath", "output.json", "Output JSON file path")
+	flag.StringVar(&logpath, "logpath", "log-server.log", "Log file path")
 	flag.Parse()
 
 	// set up logging
-	l, err := os.Create("log-server.log")
+	l, err := os.OpenFile(logpath, os.O_RDWR|os.O_CREATE, 0644)
 	defer l.Close()
 	if err != nil {
 		log.Fatalf("error opening log file: %v", err)
@@ -62,11 +84,11 @@ func main() {
 	logger := log.New(io.Writer(l), "", 0)
 
 	// set up output file to save log messages to
-	logger.Printf("Saving to output file %s", filename)
-	f, err := os.Create(filename)
+	logger.Printf("Saving to output file %s", filepath)
+	f, err = os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0644)
 	defer f.Close()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	// set up HTTP server
@@ -90,6 +112,7 @@ func main() {
 	}
 	handler.SetRoutes(
 		&rest.Route{"POST", "/log", PostLogHandler},
+		&rest.Route{"GET", "/logs", GetLogsHandler},
 	)
 
 	log.Fatal(http.ListenAndServe(httpAddr, &handler))
