@@ -14,7 +14,7 @@ import (
 )
 
 // output file to save logs to
-var f *os.File
+var filepath string
 var logger log.Logger
 
 // log message format
@@ -50,9 +50,15 @@ func Error(res rest.ResponseWriter, code int, err string) {
 // handler for POST requests to write a log entry
 // returns a 200 if successfully saved, else an error code
 func PostLogHandler(res rest.ResponseWriter, req *rest.Request) {
+	outfile, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	defer outfile.Close()
+	if err != nil {
+		Error(res, http.StatusInternalServerError, "Error opening output file: "+err.Error())
+		return
+	}
 
 	logEntry := LogMessage{}
-	err := req.DecodeJsonPayload(&logEntry)
+	err = req.DecodeJsonPayload(&logEntry)
 	if err != nil {
 		Error(res, http.StatusInternalServerError, "Error decoding request body: "+err.Error())
 		return
@@ -71,8 +77,8 @@ func PostLogHandler(res rest.ResponseWriter, req *rest.Request) {
 		return
 	}
 
-	_, err = f.Write(js)
-	_, err = f.Write([]byte("\n"))
+	_, err = outfile.Write(js)
+	_, err = outfile.Write([]byte("\n"))
 	if err != nil {
 		Error(res, http.StatusInternalServerError, "Error writing log message to file: "+err.Error())
 		return
@@ -85,8 +91,15 @@ func PostLogHandler(res rest.ResponseWriter, req *rest.Request) {
 // handler for GET requests to retrieve logs
 // returns the newline delimited logs
 func GetLogsHandler(res rest.ResponseWriter, req *rest.Request) {
+	outfile, err := os.OpenFile(filepath, os.O_CREATE|os.O_RDONLY, 0644)
+	defer outfile.Close()
+	if err != nil {
+		Error(res, http.StatusInternalServerError, "Error opening output file: "+err.Error())
+		return
+	}
+
 	res.WriteHeader(http.StatusOK)
-	r := bufio.NewReader(f)
+	r := bufio.NewReader(outfile)
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -102,7 +115,7 @@ func GetLogsHandler(res rest.ResponseWriter, req *rest.Request) {
 
 func main() {
 	var port int
-	var filepath, logpath string
+	var logpath string
 
 	// configure command line flags
 	flag.IntVar(&port, "port", 8080, "HTTP Server Port")
@@ -117,14 +130,6 @@ func main() {
 		log.Fatalf("error opening log file: %v", err)
 	}
 	logger := log.New(io.Writer(l), "", 0)
-
-	// set up output file to save log messages to
-	logger.Printf("Saving to output file %s", filepath)
-	f, err = os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0644)
-	defer f.Close()
-	if err != nil {
-		log.Println(err)
-	}
 
 	// set up HTTP server
 	httpAddr := fmt.Sprintf(":%v", port)
