@@ -5,11 +5,15 @@ log-server
 
 Simple server for saving and retrieving JSON logs via  HTTP interface. 
 
+## Download
+
 To download a binary, open a browser to [the gobuild page](http://gobuild.io/download/github.com/jgoodall/log-server).
+
+## Usage 
 
 To start the server:
 
-    log-server -filepath="out.json" -logpath="out.log" -port=8000
+    ./log-server -filepath="out.json" -logpath="log-server.log" -port=8000
 
 To save a log:
 
@@ -20,3 +24,6 @@ To save a log:
 To retrieve logs:
 
     curl -i -XGET http://localhost:8000/logs -H "accept: application/json"
+
+
+## License
