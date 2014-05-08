@@ -15,6 +15,8 @@ To start the server:
 
     ./log-server -filepath="out.json" -logpath="log-server.log" -port=8000
 
+There is no `OriginValidator`, so by default any host will be able to log to the server.
+
 To save a log:
 
     curl -i -XPOST http://localhost:8000/log -d '{"message": "test message one", "type": "curl", "tags": ["firsttag", "secondtag"]}' -H "content-type: application/json"

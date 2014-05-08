@@ -143,7 +143,7 @@ func main() {
 			&rest.CorsMiddleware{
 				RejectNonCorsRequests: false,
 				OriginValidator: func(origin string, request *rest.Request) bool {
-					return origin == "http://localhost:9000"
+					return true
 				},
 				AllowedMethods:                []string{"GET", "POST"},
 				AllowedHeaders:                []string{"Accept", "Content-Type", "X-Requested-With"},
