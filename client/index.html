@@ -27,7 +27,7 @@
   $.ajax({
     type: 'POST'
   , url: 'http://localhost:8000/log'
-  , data: message
+  , data: JSON.stringify(message)
   , accepts: 'application/json'
   , contentType: 'application/json'
   , xhrFields: { withCredentials: false }
