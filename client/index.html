@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  body {
+    margin: 100px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif
+  }
+  .errors {
+    color: #d9534f;
+  }
+</style>
+
+<body>
+
+<h1 id="status"></h1>
+<div id="output"></div>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script>
+
+  var message = {message: "test message", tags: ["firsttag"], type: "jquery"};
+
+  if (! $.support.cors) {
+    console.log("Browser does not support CORS")
+  }
+
+  $.ajax({
+    type: 'POST'
+  , url: 'http://localhost:8000/log'
+  , data: message
+  , accepts: 'application/json'
+  , contentType: 'application/json'
+  , xhrFields: { withCredentials: false }
+  })
+  .done(function(data, status) {
+    $('#status').html(status).removeClass('errors');
+    $('#output').html(data);
+  })
+  .fail(function(xhr, status, err) {
+    $('#status').html(status).addClass('errors');
+    $('#output').html(err);
+    console.log(xhr);
+  })
+
+</script>
+</body>
