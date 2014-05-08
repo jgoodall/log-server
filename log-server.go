@@ -68,7 +68,6 @@ func PostLogHandler(res rest.ResponseWriter, req *rest.Request) {
 		Error(res, http.StatusInternalServerError, "Logs must include a message field")
 		return
 	}
-
 	logEntry.CreatedAt = time.Now()
 
 	js, err := json.Marshal(logEntry)
@@ -144,9 +143,12 @@ func main() {
 			&rest.CorsMiddleware{
 				RejectNonCorsRequests: false,
 				OriginValidator: func(origin string, request *rest.Request) bool {
-					return origin == "*"
+					return origin == "http://localhost:9000"
 				},
-				AllowedHeaders: []string{"Accept", "Content-Type", "X-Requested-With"},
+				AllowedMethods:                []string{"GET", "POST"},
+				AllowedHeaders:                []string{"Accept", "Content-Type", "X-Requested-With"},
+				AccessControlAllowCredentials: true,
+				AccessControlMaxAge:           3600,
 			},
 		},
 	}
